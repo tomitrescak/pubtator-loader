@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Collection {
+  id        String     @id @default(cuid())
+  source    String?
+  date      String?
+  key       String?
+  documents Document[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("collections")
+}
+
+model Document {
+  id           String     @id @default(cuid())
+  documentId   String @unique
+      // The PMC ID from the XML
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  passages     Passage[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([documentId])
+  @@index([collectionId])
+  @@map("documents")
+}
+
+model Passage {
+  id          String       @id @default(cuid())
+  documentId  String
+  document    Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  offset      Int
+  text        String       @db.Text
+  sectionType String?
+  type        String?
+  infons      PassageInfon[]
+  annotations Annotation[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([documentId])
+  @@index([sectionType])
+  @@index([type])
+  @@map("passages")
+}
+
+model PassageInfon {
+  id        String   @id @default(cuid())
+  passageId String
+  passage   Passage  @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  
+  key       String
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([passageId])
+  @@map("infons")
+}
+
+
+
+model Annotation {
+  id         String   @id @default(cuid())
+  passageId  String
+  passage    Passage  @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  annotationId String // The id attribute from XML
+  identifier String?
+  type       String?
+  offset     Int
+  length     Int
+  text       String   @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([passageId])
+  @@index([type])
+  @@index([identifier])
+  @@map("annotations")
+}
+
+

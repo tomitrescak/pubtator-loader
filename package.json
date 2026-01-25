@@ -1,0 +1,45 @@
+{
+  "name": "pubtator-loader",
+  "version": "1.0.0",
+  "description": "Load BioC.XML files into PostgreSQL database using Prisma",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "prisma:push": "prisma db push"
+  },
+  "keywords": [
+    "bioc",
+    "xml",
+    "postgres",
+    "prisma",
+    "loader",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/adapter-pg": "latest",
+    "@prisma/client": "latest",
+    "cli-progress": "^3.12.0",
+    "dotenv": "^16.4.7",
+    "fast-xml-parser": "^4.5.0",
+    "pg": "^8.13.1",
+    "tsx": "^4.21.0",
+    "winston": "^3.17.0",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.16.0",
+    "@types/yargs": "^17.0.33",
+    "prisma": "7.3.0",
+    "typescript": "^5.7.2"
+  }
+}
