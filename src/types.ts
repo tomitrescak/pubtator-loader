@@ -1,15 +1,21 @@
 export interface InfonData {
-  '@_key': string;
-  '#text': string;
+    attributes: {
+        key: string;
+    }
+    _text: string;
 }
 
 export interface LocationData {
-  '@_offset': number;
-  '@_length': number;
+    attributes: {
+        offset: number;
+        length: number;
+    }
 }
 
 export interface AnnotationData {
-  '@_id': string;
+    attributes: {
+        id: string;
+    }
   infon?: InfonData[];
   location?: LocationData[];
   text?: string;

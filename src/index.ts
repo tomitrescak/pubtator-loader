@@ -2,9 +2,9 @@
 
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { XmlParser } from './xmlParser.js';
-import { DatabaseLoader } from './databaseLoader.js';
-import { FileProcessor } from './fileProcessor.js';
+import { XmlParser } from './xmlParser';
+import { DatabaseLoader } from './databaseLoader';
+import { FileProcessor } from './fileProcessor';
 import { logger } from './logger.js';
 import { basename } from 'path';
 import cliProgress from 'cli-progress';

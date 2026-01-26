@@ -117,8 +117,8 @@ export class DatabaseLoader {
 
     private async processPassage(passage: PassageData, documentId: string): Promise<void> {
         const passageInfons = this.ensureArray(passage.infon).map((infon) => ({
-            key: infon['@_key'] || '',
-            value: infon['#text'] || '',
+            key: infon.attributes.key || '',
+            value: infon._text || '',
         }));
         const annotations = this.ensureArray(passage.annotation);
 
@@ -175,16 +175,16 @@ export class DatabaseLoader {
 
 
         // Get location data
-        const offset = annotation.location?.[0]['@_offset'] || 0;
-        const length = annotation.location?.[0]['@_length'] || 0;
+        const offset = annotation.location?.[0].attributes.offset || 0;
+        const length = annotation.location?.[0].attributes.length || 0;
 
 
 
 
 
         const annotationInfons = this.ensureArray(annotation.infon).map((infon) => ({
-            key: infon['@_key'] || '',
-            value: infon['#text'] || '',
+            key: infon.attributes.key || '',
+            value: infon._text || '',
         }));
 
         for (const infon of annotationInfons) {
@@ -201,7 +201,7 @@ export class DatabaseLoader {
         await this.prisma.annotation.create({
             data: {
                 passageId,
-                annotationId: (annotation["@_id"] || '').toString(),
+                annotationId: (annotation.attributes.id || '').toString(),
                 identifier: identifier?.toString(),
                 type,
                 offset,

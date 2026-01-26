@@ -8,8 +8,9 @@ export class XmlParser {
   constructor() {
     this.parser = new XMLParser({
       ignoreAttributes: false,
-      attributeNamePrefix: '@_',
-      textNodeName: '#text',
+      attributeNamePrefix: "", // 🔥 removes "@_",
+      textNodeName: '_text',
+      attributesGroupName: "attributes",
       parseAttributeValue: true,
       parseTagValue: true,
       trimValues: true,
