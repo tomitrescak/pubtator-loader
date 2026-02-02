@@ -7,7 +7,7 @@ const connectionString = `${process.env.DATABASE_URL}`
 
 const adapter = new PrismaPg({ connectionString,
 ssl: {
-    ca: fs.readFileSync("./global-bundle.pem", "utf8"),
+    // ca: fs.readFileSync("./global-bundle.pem", "utf8"),
     rejectUnauthorized: false,
   },
  })
