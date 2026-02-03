@@ -6,6 +6,8 @@ import ProgressBar from 'progress';
 import * as fs from 'fs';
 import 'dotenv/config';
 import { log } from 'console';
+import { Passage } from './generated/prisma/client';
+import { PassageCreateInput, PassageCreateManyInput, PassageCreateNestedManyWithoutDocumentInput, PassageCreateWithoutDocumentInput } from './generated/prisma/models';
 
 export class DatabaseLoader {
     private prisma: PrismaClient;
@@ -109,7 +111,7 @@ export class DatabaseLoader {
                 let documentsInserted = 0;
                 
                 for (const doc of validDocuments) {
-                    const wasInserted = await this.insertDocumentIfNotExists(doc, collectionData);
+                    const wasInserted = await this.insertDocument(doc, collectionData);
                     if (wasInserted) documentsInserted++;
                 }
                 
@@ -126,7 +128,7 @@ export class DatabaseLoader {
         logger.info(`Processing complete: Inserted ${totalDocumentsInserted}/${totalDocumentsProcessed} documents`);
     }
 
-    private async insertDocumentIfNotExists(doc: DocumentData, collectionData: { source: string | null; date: string | null; key: string }): Promise<boolean> {
+    private async insertDocument(doc: DocumentData, collectionData: { source: string | null; date: string | null; key: string }): Promise<boolean> {
         const docId = doc.id!.toString();
         
         // Check if document already exists
@@ -136,7 +138,7 @@ export class DatabaseLoader {
         
         if (existingDoc) {
             // Document exists, skip it
-            return false;
+            await this.prisma.document.delete({ where: { id: existingDoc.id } });
         }
         
         // Create or get collection
@@ -152,23 +154,21 @@ export class DatabaseLoader {
         }
         
         // Create document
-        const dbDocument = await this.prisma.document.create({
-            data: {
-                documentId: docId,
-                collectionId: dbCollection.id,
-            },
-        });
+        
         
         // Process passages
         const passages = this.ensureArray(doc.passage);
         if (passages.length > 0) {
-            await this.processPassagesWithoutProgress(passages, dbDocument.id);
+            await this.processPassagesWithoutProgress(passages, {
+                documentId: docId,
+                collectionId: dbCollection.id,
+            });
         }
         
         return true; // Document was inserted
     }
 
-    private async processPassagesWithoutProgress(passages: PassageData[], documentId: string): Promise<void> {
+    private async processPassagesWithoutProgress(passages: PassageData[], documentData: { documentId: string; collectionId: string }): Promise<void> {
         // Prepare all passage data with nested infons and annotations
         const passageDataArray = passages.map(passage => {
             const passageInfons = this.ensureArray(passage.infon).map((infon) => ({
@@ -227,8 +227,8 @@ export class DatabaseLoader {
                 };
             });
 
-            return {
-                documentId,
+            const passageData: PassageCreateWithoutDocumentInput = {
+                
                 offset: passage.offset || 0,
                 text: passage.text || '',
                 sectionType,
@@ -247,16 +247,23 @@ export class DatabaseLoader {
                     }
                 } : undefined,
             };
+
+            return passageData;
         });
 
         // Count total infons and annotations
-        const totalInfons = passageDataArray.reduce((sum, p) => sum + (p.infons?.createMany.data.length || 0), 0);
-        const totalAnnotations = passageDataArray.reduce((sum, p) => sum + (p.annotations?.createMany.data.length || 0), 0);
 
-        // Create all passages with nested infons and annotations
-        for (const data of passageDataArray) {
-            await this.prisma.passage.create({ data });
-        }
+        await this.prisma.document.create({
+            data: {
+                documentId: documentData.documentId,
+                collectionId: documentData.collectionId,
+                passages: {
+                    createMany: {
+                        data: passageDataArray
+                    }
+                }
+            }
+        });
     }
 
     private shouldProcessDocument(doc: DocumentData): boolean {
