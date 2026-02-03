@@ -26,6 +26,9 @@ importers:
       pg:
         specifier: ^8.13.1
         version: 8.17.2
+      progress:
+        specifier: ^2.0.3
+        version: 2.0.3
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -45,6 +48,9 @@ importers:
       '@types/pg':
         specifier: ^8.16.0
         version: 8.16.0
+      '@types/progress':
+        specifier: ^2.0.7
+        version: 2.0.7
       '@types/yargs':
         specifier: ^17.0.33
         version: 17.0.35
@@ -328,6 +334,9 @@ packages:
 
   '@types/pg@8.16.0':
     resolution: {integrity: sha512-RmhMd/wD+CF8Dfo+cVIy3RR5cl8CyfXQ0tGgW6XBL8L4LM/UTEbNXYRbLwU6w+CgrKBNbrQWt4FUtTfaU5jSYQ==}
+
+  '@types/progress@2.0.7':
+    resolution: {integrity: sha512-iadjw02vte8qWx7U0YM++EybBha2CQLPGu9iJ97whVgJUT5Zq9MjAPYUnbfRI2Kpehimf1QjFJYxD0t8nqzu5w==}
 
   '@types/react@19.2.9':
     resolution: {integrity: sha512-Lpo8kgb/igvMIPeNV2rsYKTgaORYdO1XGVZ4Qz3akwOj0ySGYMPlQWa8BaLn0G63D1aSaAQ5ldR06wCpChQCjA==}
@@ -675,6 +684,10 @@ packages:
         optional: true
       typescript:
         optional: true
+
+  progress@2.0.3:
+    resolution: {integrity: sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==}
+    engines: {node: '>=0.4.0'}
 
   proper-lockfile@4.1.2:
     resolution: {integrity: sha512-TjNPblN4BwAWMXU8s9AEz4JmQxnD1NNL7bNOY/AKUzyamc379FWASUhc/K1pL2noVb+XmZKLL68cjzLsiOAMaA==}
@@ -1079,6 +1092,10 @@ snapshots:
       pg-protocol: 1.11.0
       pg-types: 2.2.0
 
+  '@types/progress@2.0.7':
+    dependencies:
+      '@types/node': 22.19.7
+
   '@types/react@19.2.9':
     dependencies:
       csstype: 3.2.3
@@ -1426,6 +1443,8 @@ snapshots:
       - magicast
       - react
       - react-dom
+
+  progress@2.0.3: {}
 
   proper-lockfile@4.1.2:
     dependencies:

@@ -2,19 +2,10 @@ import { prisma, PrismaClient } from './prisma';
 import pg from 'pg';
 import { BiocXmlData, DocumentData, PassageData, AnnotationData, InfonData } from './types';
 import { logger } from './logger';
-import cliProgress, { SingleBar } from 'cli-progress';
+import ProgressBar from 'progress';
+import * as fs from 'fs';
 import 'dotenv/config';
-
-interface DocumentInfo {
-    document: DocumentData;
-    fileName: string;
-    documentIndex: number;
-    collectionData: {
-        source: string | null;
-        date: string | null;
-        key: string;
-    };
-}
+import { log } from 'console';
 
 export class DatabaseLoader {
     private prisma: PrismaClient;
@@ -35,22 +26,62 @@ export class DatabaseLoader {
         logger.info('Disconnected from database');
     }
 
-    async extractValidDocuments(files: string[], parser: any, fileProgressBar: cliProgress.SingleBar): Promise<DocumentInfo[]> {
-        logger.info('Phase 1: Extracting all valid documents...');
-        const allValidDocuments: DocumentInfo[] = [];
+    private async hasRequiredAnnotationsInText(filePath: string): Promise<boolean> {
+        // If no required annotations specified, process all files
+        if (this.requiredAnnotations.length === 0) {
+            return true;
+        }
+
+        try {
+            const fileContent = await fs.promises.readFile(filePath, 'utf-8');
+            
+            // Look for annotation infon elements with required types
+            for (const requiredType of this.requiredAnnotations) {
+                // Check for type infons: <infon key="type">requiredType</infon>
+                const typePattern = new RegExp(`<infon\\s+key=["']type["'][^>]*>\\s*${requiredType}\\s*</infon>`, 'i');
+                // Check for identifier infons: <infon key="identifier">requiredType</infon>
+                const idPattern = new RegExp(`<infon\\s+key=["']identifier["'][^>]*>\\s*${requiredType}\\s*</infon>`, 'i');
+                
+                if (typePattern.test(fileContent) || idPattern.test(fileContent)) {
+                    return true;
+                }
+            }
+            
+            return false;
+        } catch (error) {
+            logger.error(`Error reading file for text validation ${filePath}: ${(error as Error).message}`);
+            // If we can't read the file for text validation, assume it might have annotations
+            return true;
+        }
+    }
+
+    async extractValidDocuments(files: string[], parser: any): Promise<void> {
+        logger.info('Processing files and inserting valid documents to database...');
         
-        fileProgressBar.setTotal(files.length);
-        fileProgressBar.start(files.length, 0);
+        const fileProgressBar = new ProgressBar('Processing [:bar] :current/:total :percent :file', {
+            complete: '█',
+            incomplete: '░',
+            width: 40,
+            total: files.length
+        });
+
+        let totalDocumentsProcessed = 0;
+        let totalDocumentsInserted = 0;
         
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const fileName = file.split('/').pop() || file;
 
-            logger.info(`Processing file: ${i+1}/${files.length} - ${fileName}`);
+            fileProgressBar.tick({ file: fileName });
 
-            
             try {
-                // Temporarily reduce logging during extraction to keep progress bar visible
+                const hasRequiredAnnotations = await this.hasRequiredAnnotationsInText(file);
+                
+                if (!hasRequiredAnnotations) {
+                    logger.info(`${fileName}: Skipped (no required annotations)`);
+                    continue;
+                }
+                
                 const data = parser.parseFile(file);
                 
                 if (!data.collection) {
@@ -66,82 +97,47 @@ export class DatabaseLoader {
                     continue;
                 }
                 
-                // Prepare collection data for later creation
                 const collectionData = {
                     source: collection.source || null,
                     date: collection.date || null,
                     key: fileName,
                 };
                 
-                // Filter valid documents
-                const validDocuments = documents
-                    .map((doc, index) => ({ doc, index }))
-                    .filter(({ doc }) => this.shouldProcessDocument(doc))
-                    .map(({ doc, index }) => ({
-                        document: doc,
-                        fileName,
-                        documentIndex: index,
-                        collectionData
-                    }));
+                const validDocuments = documents.filter(doc => this.shouldProcessDocument(doc));
+                logger.info(`${fileName}: ${validDocuments.length}/${documents.length} valid documents found`);
                 
-                allValidDocuments.push(...validDocuments);
+                let documentsInserted = 0;
                 
-                // Only log summary instead of individual file processing
-                if (validDocuments.length > 0) {
-                    logger.info(`${fileName}: ${validDocuments.length}/${documents.length} valid documents`);
+                for (const doc of validDocuments) {
+                    const wasInserted = await this.insertDocumentIfNotExists(doc, collectionData);
+                    if (wasInserted) documentsInserted++;
                 }
+                
+                totalDocumentsProcessed += validDocuments.length;
+                totalDocumentsInserted += documentsInserted;
+                
+                logger.info(`${fileName}: ${documentsInserted}/${validDocuments.length} docs inserted (${validDocuments.length}/${documents.length} valid)`);
+                
             } catch (error) {
-                logger.error(`Error in ${fileName}: ${(error as Error).message}`);
+                logger.error(`Error processing ${fileName}: ${(error as Error).message}`);
             }
         }
         
-        fileProgressBar.update(files.length, { name: 'Extraction complete' });
-        fileProgressBar.stop();
-        
-        logger.info(`Phase 1 complete: Found ${allValidDocuments.length} total valid documents`);
-        return allValidDocuments;
+        logger.info(`Processing complete: Inserted ${totalDocumentsInserted}/${totalDocumentsProcessed} documents`);
     }
 
-    async processValidDocuments(validDocuments: DocumentInfo[], progressBar: cliProgress.SingleBar): Promise<void> {
-        logger.info('Phase 2: Processing valid documents...');
-        
-        if (validDocuments.length === 0) {
-            logger.warn('No valid documents to process');
-            return;
-        }
-        
-        progressBar.setTotal(validDocuments.length);
-        
-        // Process documents in batches for better performance
-        const CONCURRENCY = 10;
-        const batches: DocumentInfo[][] = [];
-        const batchSize = Math.ceil(validDocuments.length / CONCURRENCY);
-        
-        for (let i = 0; i < validDocuments.length; i += batchSize) {
-            batches.push(validDocuments.slice(i, i + batchSize));
-        }
-        
-        logger.info(`Processing ${validDocuments.length} documents in ${batches.length} parallel batches`);
-        
-        let completedCount = 0;
-        await Promise.all(
-            batches.map(async (batch) => {
-                for (const docInfo of batch) {
-                    await this.processDocumentOnly(docInfo.document, docInfo.collectionData);
-                    completedCount++;
-                    progressBar.update(completedCount, { 
-                        name: `${docInfo.fileName}:${docInfo.documentIndex} (ID: ${docInfo.document.id})` 
-                    });
-                    logger.info(`Processed document ${completedCount}/${validDocuments.length} - ${docInfo.fileName}:${docInfo.documentIndex}`);
-                }
-            })
-        );
-        
-        logger.info(`Phase 2 complete: Processed ${validDocuments.length} documents`);
-    }
-
-    private async processDocumentOnly(doc: DocumentData, collectionData: { source: string | null; date: string | null; key: string }): Promise<void> {
+    private async insertDocumentIfNotExists(doc: DocumentData, collectionData: { source: string | null; date: string | null; key: string }): Promise<boolean> {
         const docId = doc.id!.toString();
+        
+        // Check if document already exists
+        const existingDoc = await this.prisma.document.findFirst({
+            where: { documentId: docId }
+        });
+        
+        if (existingDoc) {
+            // Document exists, skip it
+            return false;
+        }
         
         // Create or get collection
         let dbCollection = await this.prisma.collection.findFirst({
@@ -155,17 +151,6 @@ export class DatabaseLoader {
             logger.info(`Created collection: ${dbCollection.id}`);
         }
         
-        // Delete existing document if it exists
-        const existingDoc = await this.prisma.document.findFirst({
-            where: { documentId: docId }
-        });
-        
-        if (existingDoc) {
-            await this.prisma.document.delete({
-                where: { documentId: docId }
-            });
-        }
-        
         // Create document
         const dbDocument = await this.prisma.document.create({
             data: {
@@ -174,11 +159,13 @@ export class DatabaseLoader {
             },
         });
         
-        // Process passages without progress tracking
+        // Process passages
         const passages = this.ensureArray(doc.passage);
         if (passages.length > 0) {
             await this.processPassagesWithoutProgress(passages, dbDocument.id);
         }
+        
+        return true; // Document was inserted
     }
 
     private async processPassagesWithoutProgress(passages: PassageData[], documentId: string): Promise<void> {
