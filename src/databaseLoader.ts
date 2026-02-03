@@ -7,10 +7,11 @@ import 'dotenv/config';
 
 export class DatabaseLoader {
     private prisma: PrismaClient;
+    private requiredAnnotations: string[];
 
-    constructor() {
-
+    constructor(requiredAnnotations: string[] = []) {
         this.prisma = prisma;
+        this.requiredAnnotations = requiredAnnotations;
     }
 
     async connect(): Promise<void> {
@@ -46,6 +47,9 @@ export class DatabaseLoader {
         }
 
         logger.info(`Processing file: ${fileName} with ${documents.length} document(s)`);
+        if (this.requiredAnnotations.length > 0) {
+            logger.info(`Filtering documents with required annotations: ${this.requiredAnnotations.join(', ')}`);
+        }
 
         // Create collection
 
@@ -86,17 +90,52 @@ export class DatabaseLoader {
         
         // Process batches in parallel
         let completedCount = 0;
+        let skippedCount = 0;
         await Promise.all(
             batches.map(async (batch, batchIndex) => {
                 for (const doc of batch) {
-                    await this.processDocument(doc, dbCollection.id, bars.passagesProgressBar);
+                    const shouldProcess = this.shouldProcessDocument(doc);
+                    if (shouldProcess) {
+                        await this.processDocument(doc, dbCollection.id, bars.passagesProgressBar);
+                    } else {
+                        skippedCount++;
+                    }
                     completedCount++;
                     bars.documentsProgressBar.update(completedCount, { name: `Document ${doc.id || ''}` });
                 }
             })
         );
 
-        logger.info(`Completed processing ${documents.length} document(s) for file: ${fileName}`);
+        if (skippedCount > 0) {
+            logger.info(`Skipped ${skippedCount} document(s) without required annotations`);
+        }
+        logger.info(`Completed processing ${documents.length - skippedCount} document(s) for file: ${fileName}`);
+    }
+
+    private shouldProcessDocument(doc: DocumentData): boolean {
+        // If no required annotations specified, process all documents
+        if (this.requiredAnnotations.length === 0) {
+            return true;
+        }
+
+        // Check all passages in the document for required annotations
+        const passages = this.ensureArray(doc.passage);
+        for (const passage of passages) {
+            const annotations = this.ensureArray(passage.annotation);
+            for (const annotation of annotations) {
+                const annotationInfons = this.ensureArray(annotation.infon);
+                for (const infon of annotationInfons) {
+                    if (infon.attributes.key === 'type') {
+                        const annotationType = infon._text || '';
+                        if (this.requiredAnnotations.includes(annotationType)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return false;
     }
 
     private async processDocument(doc: DocumentData, collectionId: string, bar: cliProgress.SingleBar): Promise<void> {

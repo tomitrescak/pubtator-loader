@@ -11,13 +11,14 @@ import cliProgress from 'cli-progress';
 
 interface Arguments {
   path: string;
+  annotations?: string;
   _: (string | number)[];
   $0: string;
 }
 
 async function main() {
   const argv = await yargs(hideBin(process.argv))
-    .usage('Usage: $0 <path>')
+    .usage('Usage: $0 <path> [options]')
     .command('$0 <path>', 'Load BioC.XML file(s) into PostgreSQL database', (yargs) => {
       return yargs.positional('path', {
         describe: 'Path to XML file or directory containing XML files',
@@ -25,7 +26,13 @@ async function main() {
         demandOption: true,
       });
     })
+    .option('annotations', {
+      alias: 'a',
+      type: 'string',
+      description: 'Comma-separated list of required annotation types (e.g., "Gene,Disease"). Only documents with at least one of these annotations will be loaded.',
+    })
     .example('$0 data/10.BioC.XML', 'Load a single XML file')
+    .example('$0 data/ -a "Gene,Disease"', 'Load documents containing Gene or Disease annotations')
     .example('$0 data/', 'Load all XML files from directory')
     .help('h')
     .alias('h', 'help')
@@ -34,10 +41,14 @@ async function main() {
     .parse();
 
   const path = argv.path as string;
+  const requiredAnnotations = argv.annotations ? argv.annotations.split(',').map(a => a.trim()) : [];
 
   logger.info('='.repeat(60));
   logger.info('PubTator BioC.XML Loader');
   logger.info('='.repeat(60));
+  if (requiredAnnotations.length > 0) {
+    logger.info(`Filtering by annotations: ${requiredAnnotations.join(', ')}`);
+  }
 
   try {
     // Get list of files to process
@@ -46,7 +57,7 @@ async function main() {
 
     // Initialize parser and loader
     const parser = new XmlParser();
-    const loader = new DatabaseLoader();
+    const loader = new DatabaseLoader(requiredAnnotations);
 
     // Connect to database
     await loader.connect();
