@@ -62,7 +62,7 @@ async function main() {
     // Connect to database
     await loader.connect();
 
-    // Create MultiBar for nested progress bars
+    // Create MultiBar for both file and document progress
     const multibar = new cliProgress.MultiBar({
       clearOnComplete: false,
       hideCursor: true,
@@ -71,38 +71,22 @@ async function main() {
       barIncompleteChar: '\u2591',
     }, cliProgress.Presets.shades_classic);
 
-    // Create file progress bar
+    // Create progress bars
     const fileProgressBar = multibar.create(files.length, 0, { label: 'Files    ', name: 'Starting...' });
-        const documentsProgressBar = multibar.create(1, 0, { label: 'Documents', name: 'Starting...' });
-// Create document progress bar
-        const passagesProgressBar = multibar.create(1, 0, { label: 'Passages', name: 'Starting...' });
+    const documentProgressBar = multibar.create(1, 0, { label: 'Documents', name: 'Starting...' });
 
-    // Process each file
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const fileName = basename(file);
+    // Phase 1: Extract all valid documents
+    const validDocuments = await loader.extractValidDocuments(files, parser, fileProgressBar);
 
-      fileProgressBar.update(i + 1, { name: fileName });
-
-      try {
-        logger.info(`\nParsing file: ${fileName}`);
-        const data = parser.parseFile(file);
-
-        logger.info(`Loading data from: ${fileName}`);
-        await loader.loadData(data, fileName, {
-            documentsProgressBar,
-            passagesProgressBar
-        });
-
-        logger.info(`Successfully processed: ${fileName}`);
-      } catch (error) {
-        logger.error(`Error processing file ${fileName}: ${(error as Error).message}`);
-        if ((error as Error).stack) {
-          logger.error((error as Error).stack as string);
-        }
-      }
-
+    if (validDocuments.length === 0) {
+      logger.warn('No valid documents found in any files');
+      multibar.stop();
+      await loader.disconnect();
+      return;
     }
+
+    // Phase 2: Process the valid documents
+    await loader.processValidDocuments(validDocuments, documentProgressBar);
 
     multibar.stop();
 
@@ -110,7 +94,7 @@ async function main() {
     await loader.disconnect();
 
     logger.info('\n' + '='.repeat(60));
-    logger.info(`Processing complete! Processed ${files.length} file(s)`);
+    logger.info(`Processing complete! Processed ${validDocuments.length} document(s) from ${files.length} file(s)`);
     logger.info('='.repeat(60));
   } catch (error) {
     logger.error(`Fatal error: ${(error as Error).message}`);
