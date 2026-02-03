@@ -388,7 +388,8 @@ export const ModelName = {
   Document: 'Document',
   Passage: 'Passage',
   PassageInfon: 'PassageInfon',
-  Annotation: 'Annotation'
+  Annotation: 'Annotation',
+  Disease: 'Disease'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -404,7 +405,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "collection" | "document" | "passage" | "passageInfon" | "annotation"
+    modelProps: "collection" | "document" | "passage" | "passageInfon" | "annotation" | "disease"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -778,6 +779,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Disease: {
+      payload: Prisma.$DiseasePayload<ExtArgs>
+      fields: Prisma.DiseaseFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DiseaseFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DiseaseFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload>
+        }
+        findFirst: {
+          args: Prisma.DiseaseFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DiseaseFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload>
+        }
+        findMany: {
+          args: Prisma.DiseaseFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload>[]
+        }
+        create: {
+          args: Prisma.DiseaseCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload>
+        }
+        createMany: {
+          args: Prisma.DiseaseCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DiseaseCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload>[]
+        }
+        delete: {
+          args: Prisma.DiseaseDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload>
+        }
+        update: {
+          args: Prisma.DiseaseUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload>
+        }
+        deleteMany: {
+          args: Prisma.DiseaseDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DiseaseUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DiseaseUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload>[]
+        }
+        upsert: {
+          args: Prisma.DiseaseUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DiseasePayload>
+        }
+        aggregate: {
+          args: Prisma.DiseaseAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDisease>
+        }
+        groupBy: {
+          args: Prisma.DiseaseGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DiseaseGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DiseaseCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DiseaseCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -878,6 +953,15 @@ export const AnnotationScalarFieldEnum = {
 } as const
 
 export type AnnotationScalarFieldEnum = (typeof AnnotationScalarFieldEnum)[keyof typeof AnnotationScalarFieldEnum]
+
+
+export const DiseaseScalarFieldEnum = {
+  id: 'id',
+  meshId: 'meshId',
+  text: 'text'
+} as const
+
+export type DiseaseScalarFieldEnum = (typeof DiseaseScalarFieldEnum)[keyof typeof DiseaseScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1065,6 +1149,7 @@ export type GlobalOmitConfig = {
   passage?: Prisma.PassageOmit
   passageInfon?: Prisma.PassageInfonOmit
   annotation?: Prisma.AnnotationOmit
+  disease?: Prisma.DiseaseOmit
 }
 
 /* Types for Logging */

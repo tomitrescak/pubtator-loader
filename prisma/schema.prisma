@@ -89,4 +89,13 @@ model Annotation {
   @@map("annotations")
 }
 
+model Disease {
+  id     Int    @id @default(autoincrement())
+  meshId String
+  text   String @db.Text
 
+  @@unique([meshId, text])
+  @@index([meshId])
+  @@index([text])
+  @@map("diseases")
+}

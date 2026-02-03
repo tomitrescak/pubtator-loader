@@ -81,12 +81,14 @@ export class DatabaseLoader {
         const CONCURRENCY = 10;
         const batches: DocumentData[][] = [];
         const batchSize = Math.ceil(documents.length / CONCURRENCY);
+        const validDocuments = documents.filter(doc => this.shouldProcessDocument(doc));
+
         
-        for (let i = 0; i < documents.length; i += batchSize) {
-            batches.push(documents.slice(i, i + batchSize));
+        for (let i = 0; i < validDocuments.length; i += batchSize) {
+            batches.push(validDocuments.slice(i, i + batchSize));
         }
         
-        logger.info(`Processing ${documents.length} documents in ${batches.length} parallel batches`);
+        logger.info(`Processing ${validDocuments.length}/${documents.length} documents in ${batches.length} parallel batches`);
         
         // Process batches in parallel
         let completedCount = 0;
@@ -109,7 +111,7 @@ export class DatabaseLoader {
         if (skippedCount > 0) {
             logger.info(`Skipped ${skippedCount} document(s) without required annotations`);
         }
-        logger.info(`Completed processing ${documents.length - skippedCount} document(s) for file: ${fileName}`);
+        logger.info(`Completed processing ${validDocuments.length} document(s) for file: ${fileName}`);
     }
 
     private shouldProcessDocument(doc: DocumentData): boolean {
@@ -125,7 +127,7 @@ export class DatabaseLoader {
             for (const annotation of annotations) {
                 const annotationInfons = this.ensureArray(annotation.infon);
                 for (const infon of annotationInfons) {
-                    if (infon.attributes.key === 'type') {
+                     if (infon.attributes.key === 'type' || infon.attributes.key === 'identifier') {
                         const annotationType = infon._text || '';
                         if (this.requiredAnnotations.includes(annotationType)) {
                             return true;

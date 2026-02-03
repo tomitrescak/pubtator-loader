@@ -64,3 +64,8 @@ export type PassageInfon = Prisma.PassageInfonModel
  * 
  */
 export type Annotation = Prisma.AnnotationModel
+/**
+ * Model Disease
+ * 
+ */
+export type Disease = Prisma.DiseaseModel

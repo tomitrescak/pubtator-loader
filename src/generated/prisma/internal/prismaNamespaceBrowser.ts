@@ -55,7 +55,8 @@ export const ModelName = {
   Document: 'Document',
   Passage: 'Passage',
   PassageInfon: 'PassageInfon',
-  Annotation: 'Annotation'
+  Annotation: 'Annotation',
+  Disease: 'Disease'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -135,6 +136,15 @@ export const AnnotationScalarFieldEnum = {
 } as const
 
 export type AnnotationScalarFieldEnum = (typeof AnnotationScalarFieldEnum)[keyof typeof AnnotationScalarFieldEnum]
+
+
+export const DiseaseScalarFieldEnum = {
+  id: 'id',
+  meshId: 'meshId',
+  text: 'text'
+} as const
+
+export type DiseaseScalarFieldEnum = (typeof DiseaseScalarFieldEnum)[keyof typeof DiseaseScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -8,6 +8,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
+    "disease:load": "tsx src/diseaseLoader.ts",
+    "disease:load:built": "node dist/diseaseLoader.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
