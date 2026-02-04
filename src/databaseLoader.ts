@@ -138,6 +138,7 @@ export class DatabaseLoader {
         
         if (existingDoc) {
             // Document exists, skip it
+            logger.warn(`Document ${docId} already exists`);
             await this.prisma.document.delete({ where: { id: existingDoc.id } });
         }
         
@@ -170,6 +171,15 @@ export class DatabaseLoader {
 
     private async processPassagesWithoutProgress(passages: PassageData[], documentData: { documentId: string; collectionId: string }): Promise<void> {
         // Prepare all passage data with nested infons and annotations
+        
+        const doc =await this.prisma.document.create({
+            data: {
+                documentId: documentData.documentId,
+                collectionId: documentData.collectionId,
+                
+            }
+        });
+
         const passageDataArray = passages.map(passage => {
             const passageInfons = this.ensureArray(passage.infon).map((infon) => ({
                 key: infon.attributes.key || '',
@@ -227,10 +237,11 @@ export class DatabaseLoader {
                 };
             });
 
-            const passageData: PassageCreateWithoutDocumentInput = {
+            const passageData = {
                 
                 offset: passage.offset || 0,
                 text: passage.text || '',
+                documentId: doc.id,
                 sectionType,
                 type,
                 infons: passageInfons.length > 0 ? {
@@ -250,20 +261,15 @@ export class DatabaseLoader {
 
             return passageData;
         });
+        for (const passageData of passageDataArray) {
+            const p = await this.prisma.passage.create({
+                data: passageData
+            });
+        }
 
         // Count total infons and annotations
 
-        await this.prisma.document.create({
-            data: {
-                documentId: documentData.documentId,
-                collectionId: documentData.collectionId,
-                passages: {
-                    createMany: {
-                        data: passageDataArray
-                    }
-                }
-            }
-        });
+        
     }
 
     private shouldProcessDocument(doc: DocumentData): boolean {

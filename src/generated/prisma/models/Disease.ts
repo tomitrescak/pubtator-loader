@@ -210,13 +210,12 @@ export type DiseaseOrderByWithRelationInput = {
 
 export type DiseaseWhereUniqueInput = Prisma.AtLeast<{
   id?: number
-  meshId_text?: Prisma.DiseaseMeshIdTextCompoundUniqueInput
   AND?: Prisma.DiseaseWhereInput | Prisma.DiseaseWhereInput[]
   OR?: Prisma.DiseaseWhereInput[]
   NOT?: Prisma.DiseaseWhereInput | Prisma.DiseaseWhereInput[]
   meshId?: Prisma.StringFilter<"Disease"> | string
   text?: Prisma.StringFilter<"Disease"> | string
-}, "id" | "meshId_text">
+}, "id">
 
 export type DiseaseOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -275,11 +274,6 @@ export type DiseaseUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   meshId?: Prisma.StringFieldUpdateOperationsInput | string
   text?: Prisma.StringFieldUpdateOperationsInput | string
-}
-
-export type DiseaseMeshIdTextCompoundUniqueInput = {
-  meshId: string
-  text: string
 }
 
 export type DiseaseCountOrderByAggregateInput = {

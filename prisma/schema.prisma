@@ -94,7 +94,7 @@ model Disease {
   meshId String
   text   String @db.Text
 
-  @@unique([meshId, text])
+  // @@unique([meshId, text])
   @@index([meshId])
   @@index([text])
   @@map("diseases")
