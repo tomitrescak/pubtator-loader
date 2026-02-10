@@ -36,19 +36,19 @@ export class DatabaseLoader {
 
         try {
             const fileContent = await fs.promises.readFile(filePath, 'utf-8');
-            
+
             // Look for annotation infon elements with required types
             for (const requiredType of this.requiredAnnotations) {
                 // Check for type infons: <infon key="type">requiredType</infon>
                 const typePattern = new RegExp(`<infon\\s+key=["']type["'][^>]*>\\s*${requiredType}\\s*</infon>`, 'i');
                 // Check for identifier infons: <infon key="identifier">requiredType</infon>
                 const idPattern = new RegExp(`<infon\\s+key=["']identifier["'][^>]*>\\s*${requiredType}\\s*</infon>`, 'i');
-                
+
                 if (typePattern.test(fileContent) || idPattern.test(fileContent)) {
                     return true;
                 }
             }
-            
+
             return false;
         } catch (error) {
             logger.error(`Error reading file for text validation ${filePath}: ${(error as Error).message}`);
@@ -59,7 +59,7 @@ export class DatabaseLoader {
 
     async extractValidDocuments(files: string[], parser: any): Promise<void> {
         logger.info('Processing files and inserting valid documents to database...');
-        
+
         const fileProgressBar = new ProgressBar('Processing [:bar] :current/:total :percent :file', {
             complete: '█',
             incomplete: '░',
@@ -69,7 +69,7 @@ export class DatabaseLoader {
 
         let totalDocumentsProcessed = 0;
         let totalDocumentsInserted = 0;
-        
+
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const fileName = file.split('/').pop() || file;
@@ -78,85 +78,92 @@ export class DatabaseLoader {
 
             try {
                 const hasRequiredAnnotations = await this.hasRequiredAnnotationsInText(file);
-                
+
                 if (!hasRequiredAnnotations) {
                     logger.info(`${fileName}: Skipped (no required annotations)`);
                     continue;
                 }
-                
+
                 const data = parser.parseFile(file);
-                
+
                 if (!data.collection) {
                     logger.warn(`No collection found in file: ${fileName}`);
                     continue;
                 }
-                
+
                 const collection = data.collection;
                 const documents = this.ensureArray(collection.document);
-                
+
                 if (documents.length === 0) {
                     logger.warn(`No documents found in file: ${fileName}`);
                     continue;
                 }
-                
+
                 const collectionData = {
                     source: collection.source || null,
                     date: collection.date || null,
                     key: fileName,
                 };
-                
+
                 const validDocuments = documents.filter(doc => this.shouldProcessDocument(doc));
                 logger.info(`${fileName}: ${validDocuments.length}/${documents.length} valid documents found`);
-                
+
                 let documentsInserted = 0;
-                
+
                 for (const doc of validDocuments) {
-                    const wasInserted = await this.insertDocument(doc, collectionData);
+                    const wasInserted = await this.insertDocument(false, doc, collectionData);
                     if (wasInserted) documentsInserted++;
                 }
-                
+
                 totalDocumentsProcessed += validDocuments.length;
                 totalDocumentsInserted += documentsInserted;
-                
+
                 logger.info(`${fileName}: ${documentsInserted}/${validDocuments.length} docs inserted (${validDocuments.length}/${documents.length} valid)`);
-                
+
             } catch (error) {
                 logger.error(`Error processing ${fileName}: ${(error as Error).message}`);
             }
         }
-        
+
         logger.info(`Processing complete: Inserted ${totalDocumentsInserted}/${totalDocumentsProcessed} documents`);
     }
 
-    private async insertDocument(doc: DocumentData, collectionData: { source: string | null; date: string | null; key: string }): Promise<boolean> {
+    private async insertDocument(
+        deleteExisting = false,
+        doc: DocumentData, collectionData: { source: string | null; date: string | null; key: string }): Promise<boolean> {
         const docId = doc.id!.toString();
-        
+
         // Check if document already exists
         const existingDoc = await this.prisma.document.findFirst({
             where: { documentId: docId }
         });
-        
+
         if (existingDoc) {
-            // Document exists, skip it
             logger.warn(`Document ${docId} already exists`);
-            await this.prisma.document.delete({ where: { id: existingDoc.id } });
+            if (deleteExisting) {
+                // Document exists, skip it
+                await this.prisma.document.delete({ where: { id: existingDoc.id } });
+            }
+            else {
+                return false; // Document already exists, not inserted
+            }
         }
-        
+
         // Create or get collection
         let dbCollection = await this.prisma.collection.findFirst({
             where: { key: collectionData.key }
         });
-        
+
         if (!dbCollection) {
             dbCollection = await this.prisma.collection.create({
                 data: collectionData,
             });
             logger.info(`Created collection: ${dbCollection.id}`);
         }
-        
+
         // Create document
-        
-        
+
+
         // Process passages
         const passages = this.ensureArray(doc.passage);
         if (passages.length > 0) {
@@ -165,18 +172,18 @@ export class DatabaseLoader {
                 collectionId: dbCollection.id,
             });
         }
-        
+
         return true; // Document was inserted
     }
 
     private async processPassagesWithoutProgress(passages: PassageData[], documentData: { documentId: string; collectionId: string }): Promise<void> {
         // Prepare all passage data with nested infons and annotations
-        
-        const doc =await this.prisma.document.create({
+
+        const doc = await this.prisma.document.create({
             data: {
                 documentId: documentData.documentId,
                 collectionId: documentData.collectionId,
-                
+
             }
         });
 
@@ -238,7 +245,7 @@ export class DatabaseLoader {
             });
 
             const passageData = {
-                
+
                 offset: passage.offset || 0,
                 text: passage.text || '',
                 documentId: doc.id,
@@ -269,7 +276,7 @@ export class DatabaseLoader {
 
         // Count total infons and annotations
 
-        
+
     }
 
     private shouldProcessDocument(doc: DocumentData): boolean {
@@ -285,7 +292,7 @@ export class DatabaseLoader {
             for (const annotation of annotations) {
                 const annotationInfons = this.ensureArray(annotation.infon);
                 for (const infon of annotationInfons) {
-                     if (infon.attributes.key === 'type' || infon.attributes.key === 'identifier') {
+                    if (infon.attributes.key === 'type' || infon.attributes.key === 'identifier') {
                         const annotationType = infon._text || '';
                         if (this.requiredAnnotations.includes(annotationType)) {
                             return true;
@@ -294,7 +301,7 @@ export class DatabaseLoader {
                 }
             }
         }
-        
+
         return false;
     }
 

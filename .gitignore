@@ -13,7 +13,6 @@ dist/
 prisma/migrations/
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
